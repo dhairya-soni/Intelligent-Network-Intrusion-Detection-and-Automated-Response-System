@@ -3,7 +3,7 @@ import axios from 'axios'
 const API_BASE = '/api'
 
 export const api = {
-  // Existing endpoints
+  // Get all alerts
   getAlerts: async (severity = null, ip = null) => {
     let url = `${API_BASE}/alerts`
     const params = new URLSearchParams()
@@ -13,26 +13,32 @@ export const api = {
     return axios.get(url)
   },
   
+  // Get specific alert
   getAlert: async (id) => {
     return axios.get(`${API_BASE}/alerts/${id}`)
   },
   
+  // Delete specific alert
   deleteAlert: async (id) => {
     return axios.delete(`${API_BASE}/alerts/${id}`)
   },
   
+  // Get statistics
   getStats: async () => {
     return axios.get(`${API_BASE}/stats`)
   },
   
+  // Clear all alerts
   clearAlerts: async () => {
     return axios.delete(`${API_BASE}/alerts`)
   },
   
+  // Send event (for testing)
   sendEvent: async (event) => {
     return axios.post(`${API_BASE}/events`, event)
   },
   
+  // Health check
   health: async () => {
     return axios.get('/health')
   },
@@ -42,10 +48,12 @@ export const api = {
     return axios.post(`${API_BASE}/block-ip`, { ip, reason, duration })
   },
   
+  // NEW: Unblock IP
   unblockIP: async (ip) => {
     return axios.delete(`${API_BASE}/blocked-ips/${ip}`)
   },
   
+  // NEW: Get blocked IPs
   getBlockedIPs: async () => {
     return axios.get(`${API_BASE}/blocked-ips`)
   },
@@ -58,5 +66,10 @@ export const api = {
   // NEW: Action Logs
   getActionLogs: async (limit = 50) => {
     return axios.get(`${API_BASE}/actions/logs?limit=${limit}`)
+  },
+  
+  // NEW: Model Info
+  getModelInfo: async () => {
+    return axios.get(`${API_BASE}/model/info`)
   }
 }

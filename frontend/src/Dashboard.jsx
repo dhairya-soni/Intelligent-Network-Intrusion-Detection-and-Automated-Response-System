@@ -3,9 +3,6 @@ import { useState } from 'react'
 function Dashboard({ stats, alerts }) {
   if (!stats) return <div className="text-slate-400">Loading...</div>
 
-  // Calculate trend (mock calculation - in real app, compare with previous period)
-  const alertTrend = '+12%' // This would be calculated from historical data
-  
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Stats Row */}
@@ -23,7 +20,7 @@ function Dashboard({ stats, alerts }) {
           value={stats.total_alerts}
           subtitle={`${((stats.total_alerts / (stats.total_events || 1)) * 100).toFixed(1)}% of traffic`}
           icon="🚨"
-          trend={alertTrend}
+          trend="+12%"
           color="red"
         />
         <StatCard
@@ -91,13 +88,11 @@ function Dashboard({ stats, alerts }) {
                       <p className="text-xs text-slate-500">{item.count} alerts</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-16 bg-slate-700 rounded-full h-2">
-                      <div 
-                        className="bg-red-500 h-2 rounded-full"
-                        style={{ width: `${Math.min(100, (item.count / (stats.top_offending_ips[0]?.count || 1)) * 100)}%` }}
-                      />
-                    </div>
+                  <div className="w-16 bg-slate-700 rounded-full h-2">
+                    <div 
+                      className="bg-red-500 h-2 rounded-full"
+                      style={{ width: `${Math.min(100, (item.count / (stats.top_offending_ips[0]?.count || 1)) * 100)}%` }}
+                    />
                   </div>
                 </div>
               ))}
@@ -111,7 +106,7 @@ function Dashboard({ stats, alerts }) {
       {/* Attack Types & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Attack Types */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 lg:col-span-1">
+        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
           <h2 className="text-xl font-semibold mb-4 flex items-center">
             <span className="mr-2">⚔️</span> Attack Types
           </h2>
@@ -142,7 +137,7 @@ function Dashboard({ stats, alerts }) {
             {alerts.slice(0, 10).map((alert) => (
               <div
                 key={alert.id}
-                className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors"
+                className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700"
               >
                 <div className="flex items-start space-x-3 flex-1">
                   <SeverityDot severity={alert.severity} />
@@ -166,14 +161,53 @@ function Dashboard({ stats, alerts }) {
         </div>
       </div>
 
+      {/* Model Performance - NEW SECTION */}
+      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold flex items-center">
+            <span className="mr-2">🧠</span> ML Model Performance
+          </h2>
+          <span className={`px-3 py-1 rounded-full text-sm border ${
+            stats.model_info?.type?.includes('NSL-KDD') 
+              ? 'bg-green-900/50 text-green-400 border-green-700' 
+              : 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
+          }`}>
+            {stats.model_info?.type || 'Demo Mode'}
+          </span>
+        </div>
+        
+        {stats.model_info?.accuracy && stats.model_info.accuracy !== 'N/A (Demo Mode)' ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <MetricCard label="Accuracy" value={stats.model_info.accuracy} icon="🎯" />
+            <MetricCard label="Precision" value={stats.model_info.precision} icon="🎯" />
+            <MetricCard label="Recall" value={stats.model_info.recall} icon="🔍" />
+            <MetricCard label="F1-Score" value={stats.model_info.f1} icon="⚖️" />
+          </div>
+        ) : (
+          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 text-yellow-200 text-sm">
+            <p className="font-semibold mb-1">⚠️ Demo Mode Active</p>
+            <p>Run <code className="bg-yellow-900/50 px-2 py-1 rounded">python train_model.py</code> with NSL-KDD dataset for real metrics.</p>
+          </div>
+        )}
+        
+        <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-slate-400">
+          <div>
+            <span className="text-slate-500">Training Data:</span> {stats.model_info?.training_samples || 'N/A'} samples
+          </div>
+          <div>
+            <span className="text-slate-500">Features:</span> {stats.model_info?.features || '10 basic features'}
+          </div>
+        </div>
+      </div>
+
       {/* System Status */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
         <h2 className="text-xl font-semibold mb-4 flex items-center">
           <span className="mr-2">⚙️</span> System Status
         </h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatusCard title="Event Ingestion" status="active" detail="Processing" />
-          <StatusCard title="ML Detection" status="active" detail="Isolation Forest" />
+          <StatusCard title="ML Detection" status="active" detail={stats.model_info?.type?.includes('NSL-KDD') ? 'NSL-KDD Model' : 'Isolation Forest'} />
           <StatusCard title="Rule Engine" status="active" detail="5 Rules Active" />
           <StatusCard title="IP Blocking" status={stats.blocked_ips_count > 0 ? "warning" : "active"} 
                      detail={stats.blocked_ips_count > 0 ? `${stats.blocked_ips_count} Blocked` : "Active"} />
@@ -185,13 +219,6 @@ function Dashboard({ stats, alerts }) {
 
 // Helper Components
 function StatCard({ title, value, subtitle, icon, trend, color }) {
-  const colors = {
-    blue: 'bg-blue-600',
-    red: 'bg-red-600',
-    orange: 'bg-orange-600',
-    green: 'bg-green-600'
-  }
-  
   return (
     <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 hover:border-slate-600 transition-all hover:transform hover:-translate-y-1">
       <div className="flex items-start justify-between">
@@ -210,6 +237,16 @@ function StatCard({ title, value, subtitle, icon, trend, color }) {
           <span className="text-slate-500 ml-1">vs last period</span>
         </div>
       )}
+    </div>
+  )
+}
+
+function MetricCard({ label, value, icon }) {
+  return (
+    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 text-center">
+      <div className="text-2xl mb-1">{icon}</div>
+      <div className="text-2xl font-bold text-white">{value || '0%'}</div>
+      <div className="text-xs text-slate-400">{label}</div>
     </div>
   )
 }

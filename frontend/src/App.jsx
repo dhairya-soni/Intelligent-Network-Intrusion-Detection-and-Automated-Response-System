@@ -14,16 +14,20 @@ function App() {
 
   const fetchData = async () => {
     try {
-      const [alertsRes, statsRes] = await Promise.all([
+      const [alertsRes, statsRes, modelRes] = await Promise.all([
         api.getAlerts(),
-        api.getStats()
+        api.getStats(),
+        api.getModelInfo()
       ])
       setAlerts(alertsRes.data)
-      setStats(statsRes.data)
-      setLastUpdate(new Date())
+      setStats({
+        ...statsRes.data,
+        model_info: modelRes.data.model
+      })
       setError(null)
     } catch (err) {
-      setError('Failed to connect to backend')
+      console.error('Error fetching data:', err)
+      setError('Failed to fetch data. Is the backend running?')
     } finally {
       setLoading(false)
     }

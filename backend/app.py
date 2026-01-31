@@ -14,12 +14,12 @@ CORS(app)
 
 # Storage
 alerts = []
-blocked_ips = set()  # New: Track blocked IPs
-action_logs = []     # New: Track all actions
-event_counter = 0    # New: Track total events
+blocked_ips = set()
+action_logs = []
+event_counter = 0
 
-# Initialize components
-detector = INIDARSDetector()
+# Initialize components - Set use_trained_model=True after running train_model.py
+detector = INIDARSDetector(use_trained_model=True)
 feature_extractor = FeatureExtractor()
 
 # Severity constants
@@ -34,7 +34,7 @@ def ingest_event():
     global event_counter
     try:
         event = request.json
-        event_counter += 1  # Increment total counter
+        event_counter += 1
         
         source_ip = event.get('source_ip', 'unknown')
         
@@ -80,35 +80,27 @@ def block_ip():
         data = request.json
         ip = data.get('ip')
         reason = data.get('reason', 'Manual block')
-        duration = data.get('duration', 'permanent')  # permanent or hours
+        duration = data.get('duration', 'permanent')
         
         if not ip:
             return jsonify({'error': 'IP required'}), 400
         
         blocked_ips.add(ip)
-        
-        # Calculate unblock time if temporary
-        unblock_time = None
-        if duration != 'permanent' and isinstance(duration, int):
-            unblock_time = (datetime.now() + timedelta(hours=duration)).isoformat()
-        
         log_action('IP_BLOCKED', ip, f"Reason: {reason}, Duration: {duration}")
         
         return jsonify({
             'status': 'success',
             'message': f'IP {ip} blocked',
-            'blocked_at': datetime.now().isoformat(),
-            'unblock_time': unblock_time
+            'blocked_at': datetime.now().isoformat()
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/blocked-ips', methods=['GET'])
 def get_blocked_ips():
-    """Get list of blocked IPs with metadata"""
+    """Get list of blocked IPs"""
     blocked_list = []
     for ip in blocked_ips:
-        # Find related actions for this IP
         related_actions = [log for log in action_logs if log['ip'] == ip and 'BLOCK' in log['action']]
         latest_action = related_actions[-1] if related_actions else None
         
@@ -128,18 +120,14 @@ def unblock_ip(ip):
         blocked_ips.remove(ip)
         log_action('IP_UNBLOCKED', ip, 'IP manually unblocked')
         return jsonify({'status': 'success', 'message': f'IP {ip} unblocked'})
-    return jsonify({'error': 'IP not found in blocked list'}), 404
+    return jsonify({'error': 'IP not found'}), 404
 
 @app.route('/api/ip-history/<ip>', methods=['GET'])
 def get_ip_history(ip):
     """Get complete history for an IP"""
-    # Get all alerts from this IP
     ip_alerts = [a for a in alerts if a['source_ip'] == ip]
-    
-    # Get all actions related to this IP
     ip_actions = [log for log in action_logs if log['ip'] == ip]
     
-    # Calculate statistics
     stats = {
         'total_alerts': len(ip_alerts),
         'severity_breakdown': {
@@ -161,17 +149,14 @@ def get_ip_history(ip):
         'actions': sorted(ip_actions, key=lambda x: x['timestamp'], reverse=True)
     })
 
-@app.route('/api/actions/logs', methods=['GET'])
-def get_action_logs():
-    """Get action logs with filtering"""
-    limit = request.args.get('limit', 50, type=int)
-    action_type = request.args.get('type')
-    
-    logs = action_logs
-    if action_type:
-        logs = [log for log in logs if action_type in log['action']]
-    
-    return jsonify(sorted(logs, key=lambda x: x['timestamp'], reverse=True)[:limit])
+@app.route('/api/model/info', methods=['GET'])
+def get_model_info():
+    """Get ML model information"""
+    return jsonify({
+        'model': detector.get_model_info(),
+        'rules_active': len(detector.rules),
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
@@ -187,12 +172,25 @@ def get_alerts():
     
     return jsonify(sorted(filtered, key=lambda x: x['timestamp'], reverse=True))
 
+@app.route('/api/alerts/<alert_id>', methods=['GET'])
+def get_alert(alert_id):
+    """Get specific alert"""
+    alert = next((a for a in alerts if a['id'] == alert_id), None)
+    if alert:
+        return jsonify(alert)
+    return jsonify({'error': 'Alert not found'}), 404
+
+@app.route('/api/alerts/<alert_id>', methods=['DELETE'])
+def delete_alert(alert_id):
+    """Delete specific alert"""
+    global alerts
+    alerts = [a for a in alerts if a['id'] != alert_id]
+    return jsonify({'status': 'success'})
+
 @app.route('/api/stats', methods=['GET'])
 def get_statistics():
     """Enhanced statistics"""
     total_alerts = len(alerts)
-    
-    # Time-based stats (last 24h, 7d, 30d)
     now = datetime.now()
     last_24h = sum(1 for a in alerts if datetime.fromisoformat(a['timestamp']) > now - timedelta(hours=24))
     
@@ -203,13 +201,11 @@ def get_statistics():
         SEVERITY_LOW: sum(1 for a in alerts if a['severity'] == SEVERITY_LOW)
     }
     
-    # Attack types
     attack_types = {}
     for alert in alerts:
         threat = alert.get('threat_type', 'Unknown')
         attack_types[threat] = attack_types.get(threat, 0) + 1
     
-    # Top offending IPs
     ip_counts = {}
     for alert in alerts:
         ip = alert['source_ip']
@@ -217,7 +213,7 @@ def get_statistics():
     top_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     
     return jsonify({
-        'total_events': event_counter,  # NEW: Total events processed
+        'total_events': event_counter,
         'total_alerts': total_alerts,
         'blocked_ips_count': len(blocked_ips),
         'alerts_last_24h': last_24h,
@@ -228,16 +224,9 @@ def get_statistics():
         'timestamp': now.isoformat()
     })
 
-@app.route('/api/alerts/<alert_id>', methods=['DELETE'])
-def delete_alert(alert_id):
-    """Delete specific alert"""
-    global alerts
-    alerts = [a for a in alerts if a['id'] != alert_id]
-    return jsonify({'status': 'success'})
-
 @app.route('/api/alerts', methods=['DELETE'])
 def clear_alerts():
-    """Clear all alerts"""
+    """Clear all alerts (for testing)"""
     global alerts, event_counter
     count = len(alerts)
     alerts = []
@@ -247,6 +236,7 @@ def clear_alerts():
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    """Health check"""
     return jsonify({
         'status': 'healthy',
         'service': 'INIDARS MVP',
@@ -257,6 +247,7 @@ def health_check():
     })
 
 def normalize_event(event):
+    """Normalize raw event into standard format"""
     return {
         'timestamp': event.get('timestamp', datetime.now().isoformat()),
         'source_ip': event.get('source_ip', 'unknown'),
@@ -272,9 +263,10 @@ def normalize_event(event):
     }
 
 def create_alert(event, detection_result):
+    """Create alert from detection result"""
     severity = determine_severity(detection_result)
     
-    return {
+    alert = {
         'id': str(uuid.uuid4()),
         'timestamp': datetime.now().isoformat(),
         'severity': severity,
@@ -290,8 +282,11 @@ def create_alert(event, detection_result):
         'recommendation': detection_result['recommendation'],
         'raw_event': event
     }
+    
+    return alert
 
 def determine_severity(detection_result):
+    """Determine alert severity"""
     score = detection_result['ml_score']
     rule = detection_result['rule_matched']
     
@@ -315,12 +310,18 @@ def log_action(action, ip, details):
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🛡️  INIDARS MVP Backend v2.0")
+    print("🛡️  INIDARS MVP Backend v2.0 Starting...")
     print("=" * 60)
-    print("New Features:")
-    print("   ✅ IP Blocking & Management")
-    print("   ✅ Action Logging")
-    print("   ✅ IP Investigation")
-    print("   ✅ Enhanced Statistics")
+    print("📡 API Server: http://localhost:5000")
+    print("🔍 Detection Engine: READY")
+    print("📊 Endpoints:")
+    print("   - POST /api/events       (Ingest events)")
+    print("   - POST /api/block-ip     (Block IP)")
+    print("   - GET  /api/blocked-ips  (View blocked)")
+    print("   - GET  /api/ip-history   (Investigate IP)")
+    print("   - GET  /api/model/info   (ML metrics)")
+    print("   - GET  /api/stats        (Statistics)")
     print("=" * 60)
+    print()
+    
     app.run(host='0.0.0.0', port=5000, debug=True)
