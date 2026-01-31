@@ -1,6 +1,6 @@
 """
-INIDARS MVP - Flask Backend
-Handles event ingestion, detection, and alert management
+INIDARS MVP - Flask Backend - Enhanced Version
+Better severity classification for varied alert levels
 """
 
 from flask import Flask, request, jsonify
@@ -26,9 +26,7 @@ SEVERITY_LOW = "LOW"
 
 @app.route('/api/events', methods=['POST'])
 def ingest_event():
-    """
-    Ingest a security event and process through detection pipeline
-    """
+    """Ingest a security event and process through detection pipeline"""
     try:
         event = request.json
         
@@ -68,9 +66,7 @@ def ingest_event():
 
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
-    """
-    Get all alerts, optionally filtered by severity
-    """
+    """Get all alerts, optionally filtered by severity"""
     severity = request.args.get('severity')
     
     if severity:
@@ -83,9 +79,7 @@ def get_alerts():
 
 @app.route('/api/alerts/<alert_id>', methods=['GET'])
 def get_alert(alert_id):
-    """
-    Get specific alert by ID
-    """
+    """Get specific alert by ID"""
     alert = next((a for a in alerts if a['id'] == alert_id), None)
     
     if alert:
@@ -95,9 +89,7 @@ def get_alert(alert_id):
 
 @app.route('/api/stats', methods=['GET'])
 def get_statistics():
-    """
-    Get alert statistics
-    """
+    """Get alert statistics"""
     total = len(alerts)
     
     severity_counts = {
@@ -126,9 +118,7 @@ def get_statistics():
 
 @app.route('/api/alerts', methods=['DELETE'])
 def clear_alerts():
-    """
-    Clear all alerts (for testing)
-    """
+    """Clear all alerts (for testing)"""
     global alerts
     count = len(alerts)
     alerts = []
@@ -140,9 +130,7 @@ def clear_alerts():
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """
-    Health check endpoint
-    """
+    """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'service': 'INIDARS MVP',
@@ -151,9 +139,7 @@ def health_check():
     })
 
 def normalize_event(event):
-    """
-    Normalize raw event into standard format
-    """
+    """Normalize raw event into standard format"""
     return {
         'timestamp': event.get('timestamp', datetime.now().isoformat()),
         'source_ip': event.get('source_ip', 'unknown'),
@@ -169,9 +155,7 @@ def normalize_event(event):
     }
 
 def create_alert(event, detection_result):
-    """
-    Create alert from detection result
-    """
+    """Create alert from detection result"""
     # Determine severity based on ML score and rule match
     severity = determine_severity(detection_result)
     
@@ -196,24 +180,29 @@ def create_alert(event, detection_result):
 
 def determine_severity(detection_result):
     """
-    Determine alert severity based on detection results
+    Determine alert severity with better distribution
+    Updated thresholds for more varied severities
     """
     score = detection_result['ml_score']
     rule = detection_result['rule_matched']
     
-    # Critical: High ML score + Rule match
-    if score > 0.85 and rule:
+    # Critical: Very high ML score + Rule match
+    if score > 0.8 and rule:
         return SEVERITY_CRITICAL
     
-    # High: High ML score OR strong rule match
-    if score > 0.75 or rule:
+    # High: High ML score + Rule match OR very high score alone
+    if (score > 0.65 and rule) or score > 0.85:
         return SEVERITY_HIGH
     
-    # Medium: Moderate ML score
-    if score > 0.6:
+    # Medium: Moderate ML score + Rule match OR moderate score alone
+    if (score > 0.5 and rule) or score > 0.65:
         return SEVERITY_MEDIUM
     
-    # Low: Low ML score but still flagged
+    # Low: Lower ML score OR rule match with low score
+    if score > 0.45 or rule:
+        return SEVERITY_LOW
+    
+    # Shouldn't reach here, but default to LOW
     return SEVERITY_LOW
 
 if __name__ == '__main__':
@@ -221,7 +210,7 @@ if __name__ == '__main__':
     print("🛡️  INIDARS MVP Backend Starting...")
     print("=" * 60)
     print("📡 API Server: http://localhost:5000")
-    print("🔍 Detection Engine: READY")
+    print("🔍 Detection Engine: READY (Enhanced)")
     print("📊 Endpoints:")
     print("   - POST /api/events      (Ingest security events)")
     print("   - GET  /api/alerts      (Get all alerts)")
