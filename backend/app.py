@@ -1,11 +1,10 @@
 """
-INIDARS MVP - Flask Backend - Enhanced Version
-Better severity classification for varied alert levels
+INIDARS MVP - Flask Backend - Enhanced with Actions & Better Tracking
 """
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from detector import INIDARSDetector
 from feature_extractor import FeatureExtractor
@@ -13,12 +12,17 @@ from feature_extractor import FeatureExtractor
 app = Flask(__name__)
 CORS(app)
 
-# In-memory storage
+# Storage
 alerts = []
+blocked_ips = set()  # New: Track blocked IPs
+action_logs = []     # New: Track all actions
+event_counter = 0    # New: Track total events
+
+# Initialize components
 detector = INIDARSDetector()
 feature_extractor = FeatureExtractor()
 
-# Alert severity levels
+# Severity constants
 SEVERITY_CRITICAL = "CRITICAL"
 SEVERITY_HIGH = "HIGH"
 SEVERITY_MEDIUM = "MEDIUM"
@@ -26,23 +30,31 @@ SEVERITY_LOW = "LOW"
 
 @app.route('/api/events', methods=['POST'])
 def ingest_event():
-    """Ingest a security event and process through detection pipeline"""
+    """Ingest event with IP blocking check"""
+    global event_counter
     try:
         event = request.json
+        event_counter += 1  # Increment total counter
         
-        # Step 1: Parse and normalize event
+        source_ip = event.get('source_ip', 'unknown')
+        
+        # Check if IP is blocked
+        if source_ip in blocked_ips:
+            log_action('BLOCKED_EVENT', source_ip, f"Event from blocked IP rejected")
+            return jsonify({
+                'status': 'blocked',
+                'message': f'IP {source_ip} is blocked'
+            }), 403
+        
+        # Process through pipeline
         normalized_event = normalize_event(event)
-        
-        # Step 2: Extract features
         features = feature_extractor.extract(normalized_event)
-        
-        # Step 3: Run detection (ML + Rules)
         detection_result = detector.detect(features, normalized_event)
         
-        # Step 4: Generate alert if threat detected
         if detection_result['is_threat']:
             alert = create_alert(normalized_event, detection_result)
             alerts.append(alert)
+            log_action('ALERT_CREATED', source_ip, f"Alert: {detection_result['threat_type']}")
             
             return jsonify({
                 'status': 'success',
@@ -59,38 +71,130 @@ def ingest_event():
         }), 200
         
     except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/block-ip', methods=['POST'])
+def block_ip():
+    """Block an IP address"""
+    try:
+        data = request.json
+        ip = data.get('ip')
+        reason = data.get('reason', 'Manual block')
+        duration = data.get('duration', 'permanent')  # permanent or hours
+        
+        if not ip:
+            return jsonify({'error': 'IP required'}), 400
+        
+        blocked_ips.add(ip)
+        
+        # Calculate unblock time if temporary
+        unblock_time = None
+        if duration != 'permanent' and isinstance(duration, int):
+            unblock_time = (datetime.now() + timedelta(hours=duration)).isoformat()
+        
+        log_action('IP_BLOCKED', ip, f"Reason: {reason}, Duration: {duration}")
+        
         return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+            'status': 'success',
+            'message': f'IP {ip} blocked',
+            'blocked_at': datetime.now().isoformat(),
+            'unblock_time': unblock_time
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/blocked-ips', methods=['GET'])
+def get_blocked_ips():
+    """Get list of blocked IPs with metadata"""
+    blocked_list = []
+    for ip in blocked_ips:
+        # Find related actions for this IP
+        related_actions = [log for log in action_logs if log['ip'] == ip and 'BLOCK' in log['action']]
+        latest_action = related_actions[-1] if related_actions else None
+        
+        blocked_list.append({
+            'ip': ip,
+            'blocked_at': latest_action['timestamp'] if latest_action else None,
+            'reason': latest_action['details'] if latest_action else 'Unknown',
+            'alert_count': sum(1 for a in alerts if a['source_ip'] == ip)
+        })
+    
+    return jsonify(blocked_list)
+
+@app.route('/api/blocked-ips/<ip>', methods=['DELETE'])
+def unblock_ip(ip):
+    """Unblock an IP"""
+    if ip in blocked_ips:
+        blocked_ips.remove(ip)
+        log_action('IP_UNBLOCKED', ip, 'IP manually unblocked')
+        return jsonify({'status': 'success', 'message': f'IP {ip} unblocked'})
+    return jsonify({'error': 'IP not found in blocked list'}), 404
+
+@app.route('/api/ip-history/<ip>', methods=['GET'])
+def get_ip_history(ip):
+    """Get complete history for an IP"""
+    # Get all alerts from this IP
+    ip_alerts = [a for a in alerts if a['source_ip'] == ip]
+    
+    # Get all actions related to this IP
+    ip_actions = [log for log in action_logs if log['ip'] == ip]
+    
+    # Calculate statistics
+    stats = {
+        'total_alerts': len(ip_alerts),
+        'severity_breakdown': {
+            'CRITICAL': sum(1 for a in ip_alerts if a['severity'] == 'CRITICAL'),
+            'HIGH': sum(1 for a in ip_alerts if a['severity'] == 'HIGH'),
+            'MEDIUM': sum(1 for a in ip_alerts if a['severity'] == 'MEDIUM'),
+            'LOW': sum(1 for a in ip_alerts if a['severity'] == 'LOW')
+        },
+        'threat_types': list(set(a['threat_type'] for a in ip_alerts)),
+        'first_seen': min((a['timestamp'] for a in ip_alerts), default=None),
+        'last_seen': max((a['timestamp'] for a in ip_alerts), default=None),
+        'is_blocked': ip in blocked_ips
+    }
+    
+    return jsonify({
+        'ip': ip,
+        'statistics': stats,
+        'alerts': sorted(ip_alerts, key=lambda x: x['timestamp'], reverse=True),
+        'actions': sorted(ip_actions, key=lambda x: x['timestamp'], reverse=True)
+    })
+
+@app.route('/api/actions/logs', methods=['GET'])
+def get_action_logs():
+    """Get action logs with filtering"""
+    limit = request.args.get('limit', 50, type=int)
+    action_type = request.args.get('type')
+    
+    logs = action_logs
+    if action_type:
+        logs = [log for log in logs if action_type in log['action']]
+    
+    return jsonify(sorted(logs, key=lambda x: x['timestamp'], reverse=True)[:limit])
 
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
-    """Get all alerts, optionally filtered by severity"""
+    """Get alerts with filtering"""
     severity = request.args.get('severity')
+    ip = request.args.get('ip')
     
+    filtered = alerts
     if severity:
-        filtered = [a for a in alerts if a['severity'] == severity.upper()]
-        return jsonify(filtered)
+        filtered = [a for a in filtered if a['severity'] == severity.upper()]
+    if ip:
+        filtered = [a for a in filtered if ip in a['source_ip']]
     
-    # Return sorted by timestamp (newest first)
-    sorted_alerts = sorted(alerts, key=lambda x: x['timestamp'], reverse=True)
-    return jsonify(sorted_alerts)
-
-@app.route('/api/alerts/<alert_id>', methods=['GET'])
-def get_alert(alert_id):
-    """Get specific alert by ID"""
-    alert = next((a for a in alerts if a['id'] == alert_id), None)
-    
-    if alert:
-        return jsonify(alert)
-    
-    return jsonify({'error': 'Alert not found'}), 404
+    return jsonify(sorted(filtered, key=lambda x: x['timestamp'], reverse=True))
 
 @app.route('/api/stats', methods=['GET'])
 def get_statistics():
-    """Get alert statistics"""
-    total = len(alerts)
+    """Enhanced statistics"""
+    total_alerts = len(alerts)
+    
+    # Time-based stats (last 24h, 7d, 30d)
+    now = datetime.now()
+    last_24h = sum(1 for a in alerts if datetime.fromisoformat(a['timestamp']) > now - timedelta(hours=24))
     
     severity_counts = {
         SEVERITY_CRITICAL: sum(1 for a in alerts if a['severity'] == SEVERITY_CRITICAL),
@@ -99,47 +203,60 @@ def get_statistics():
         SEVERITY_LOW: sum(1 for a in alerts if a['severity'] == SEVERITY_LOW)
     }
     
-    # Attack type distribution
+    # Attack types
     attack_types = {}
     for alert in alerts:
         threat = alert.get('threat_type', 'Unknown')
         attack_types[threat] = attack_types.get(threat, 0) + 1
     
-    # Recent activity (last 10 alerts)
-    recent = sorted(alerts, key=lambda x: x['timestamp'], reverse=True)[:10]
+    # Top offending IPs
+    ip_counts = {}
+    for alert in alerts:
+        ip = alert['source_ip']
+        ip_counts[ip] = ip_counts.get(ip, 0) + 1
+    top_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     
     return jsonify({
-        'total_alerts': total,
+        'total_events': event_counter,  # NEW: Total events processed
+        'total_alerts': total_alerts,
+        'blocked_ips_count': len(blocked_ips),
+        'alerts_last_24h': last_24h,
         'severity_counts': severity_counts,
         'attack_types': attack_types,
-        'recent_alerts': recent,
-        'timestamp': datetime.now().isoformat()
+        'top_offending_ips': [{'ip': ip, 'count': count} for ip, count in top_ips],
+        'recent_alerts': sorted(alerts, key=lambda x: x['timestamp'], reverse=True)[:5],
+        'timestamp': now.isoformat()
     })
+
+@app.route('/api/alerts/<alert_id>', methods=['DELETE'])
+def delete_alert(alert_id):
+    """Delete specific alert"""
+    global alerts
+    alerts = [a for a in alerts if a['id'] != alert_id]
+    return jsonify({'status': 'success'})
 
 @app.route('/api/alerts', methods=['DELETE'])
 def clear_alerts():
-    """Clear all alerts (for testing)"""
-    global alerts
+    """Clear all alerts"""
+    global alerts, event_counter
     count = len(alerts)
     alerts = []
-    
-    return jsonify({
-        'status': 'success',
-        'message': f'Cleared {count} alerts'
-    })
+    event_counter = 0
+    log_action('ALERTS_CLEARED', 'system', f'Cleared {count} alerts')
+    return jsonify({'status': 'success', 'cleared': count})
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'service': 'INIDARS MVP',
+        'version': '2.0',
         'alerts_count': len(alerts),
-        'timestamp': datetime.now().isoformat()
+        'blocked_ips': len(blocked_ips),
+        'total_events': event_counter
     })
 
 def normalize_event(event):
-    """Normalize raw event into standard format"""
     return {
         'timestamp': event.get('timestamp', datetime.now().isoformat()),
         'source_ip': event.get('source_ip', 'unknown'),
@@ -155,11 +272,9 @@ def normalize_event(event):
     }
 
 def create_alert(event, detection_result):
-    """Create alert from detection result"""
-    # Determine severity based on ML score and rule match
     severity = determine_severity(detection_result)
     
-    alert = {
+    return {
         'id': str(uuid.uuid4()),
         'timestamp': datetime.now().isoformat(),
         'severity': severity,
@@ -175,48 +290,37 @@ def create_alert(event, detection_result):
         'recommendation': detection_result['recommendation'],
         'raw_event': event
     }
-    
-    return alert
 
 def determine_severity(detection_result):
-    """
-    Determine alert severity with better distribution
-    Updated thresholds for more varied severities
-    """
     score = detection_result['ml_score']
     rule = detection_result['rule_matched']
     
-    # Critical: Very high ML score + Rule match
     if score > 0.8 and rule:
         return SEVERITY_CRITICAL
-    
-    # High: High ML score + Rule match OR very high score alone
     if (score > 0.65 and rule) or score > 0.85:
         return SEVERITY_HIGH
-    
-    # Medium: Moderate ML score + Rule match OR moderate score alone
     if (score > 0.5 and rule) or score > 0.65:
         return SEVERITY_MEDIUM
-    
-    # Low: Lower ML score OR rule match with low score
-    if score > 0.45 or rule:
-        return SEVERITY_LOW
-    
-    # Shouldn't reach here, but default to LOW
     return SEVERITY_LOW
+
+def log_action(action, ip, details):
+    """Log an action for audit trail"""
+    action_logs.append({
+        'id': str(uuid.uuid4()),
+        'timestamp': datetime.now().isoformat(),
+        'action': action,
+        'ip': ip,
+        'details': details
+    })
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🛡️  INIDARS MVP Backend Starting...")
+    print("🛡️  INIDARS MVP Backend v2.0")
     print("=" * 60)
-    print("📡 API Server: http://localhost:5000")
-    print("🔍 Detection Engine: READY (Enhanced)")
-    print("📊 Endpoints:")
-    print("   - POST /api/events      (Ingest security events)")
-    print("   - GET  /api/alerts      (Get all alerts)")
-    print("   - GET  /api/stats       (Get statistics)")
-    print("   - GET  /health          (Health check)")
+    print("New Features:")
+    print("   ✅ IP Blocking & Management")
+    print("   ✅ Action Logging")
+    print("   ✅ IP Investigation")
+    print("   ✅ Enhanced Statistics")
     print("=" * 60)
-    print()
-    
     app.run(host='0.0.0.0', port=5000, debug=True)
