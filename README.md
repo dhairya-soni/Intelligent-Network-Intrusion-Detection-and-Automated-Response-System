@@ -55,17 +55,45 @@ INIDARS (Intelligent Network Intrusion Detection and Automated Response System) 
 ## 🏗️ Architecture
 
 ```
-Network Traffic → [Flask Backend] → Feature Extraction → [ML Detector + Rules] → Alert Generation
-                                      ↓                        ↓
-                                  [Isolation Forest]    [5 Detection Rules]
-                                      ↓                        ↓
-                              Anomaly Score (0-1)      Pattern Matching
-                                      ↓                        ↓
-                              Combined Scoring ←──────────────┘
-                                      ↓
-                            Severity Assessment → [IP Blocking/Investigation]
-                                      ↓
-                         [React Dashboard] ← WebSocket/HTTP API
+┌─────────────────┐
+│   USER BROWSER  │  (Opens http://localhost:3000)
+└────────┬────────┘
+         │
+         v
+┌─────────────────────────────────────────┐
+│        REACT FRONTEND (Port 3000)       │
+│  - Dashboard.jsx                        │
+│  - AlertsList.jsx                       │
+│  - Shows alerts, statistics, graphs     │
+└────────┬────────────────────────────────┘
+         │ HTTP Requests (via api.js)
+         │ GET /api/alerts
+         │ POST /api/events
+         │ POST /api/block-ip
+         v
+┌─────────────────────────────────────────┐
+│       FLASK BACKEND (Port 5000)         │
+│                                         │
+│  app.py ─→ Routes HTTP requests         │
+│     │                                   │
+│     v                                   │
+│  detector.py ─→ ML + Rules              │
+│     │            │                      │
+│     │            v                      │
+│     │      feature_extractor.py         │
+│     │       (Convert to numbers)        │
+│     v                                   │
+│  In-Memory Storage                      │
+│  - alerts[] list                        │
+│  - blocked_ips set                      │
+└─────────────────────────────────────────┘
+         ^
+         │ Demo sends fake events
+         │
+┌────────┴────────┐
+│    demo.py      │  (Simulates attacks)
+└─────────────────┘
+
 ```
 
 ### Tech Stack
