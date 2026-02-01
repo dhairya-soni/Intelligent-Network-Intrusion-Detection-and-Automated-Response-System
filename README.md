@@ -4,7 +4,6 @@
 [![React](https://img.shields.io/badge/React-18.0%2B-61DAFB?logo=react)](https://reactjs.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0%2B-black?logo=flask)](https://flask.palletsprojects.com/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-orange?logo=scikit-learn)](https://scikit-learn.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > **An intelligent, real-time Network Intrusion Detection System (NIDS) powered by Machine Learning and rule-based detection, featuring automated threat response and interactive investigation capabilities.**
 
@@ -204,7 +203,7 @@ python demo.py malware
 
 ---
 
-## 📊 Screenshots
+## 📊 Screenshots(WILL ADD SOON!)
 
 ### Dashboard Overview
 *Real-time monitoring with model performance metrics*
@@ -256,41 +255,8 @@ python demo.py malware
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **NSL-KDD Dataset**: Canadian Institute for Cybersecurity
-- **scikit-learn**: Machine learning library
-- **React & Flask**: Web framework communities
-
----
-
-## 📧 Contact
-
-**Dhairya Soni** - [Your Email/LinkedIn/Twitter]
-
 Project Link: [https://github.com/dhairya-soni/Intelligent-Network-Intrusion-Detection-and-Automated-Response-System](https://github.com/dhairya-soni/Intelligent-Network-Intrusion-Detection-and-Automated-Response-System)
 
 ---
 
-<div align="center">
-  <h3>⭐ Star this repo if you find it helpful!</h3>
-  <p>Built with ❤️ for cybersecurity and ML enthusiasts</p>
-</div>
+
