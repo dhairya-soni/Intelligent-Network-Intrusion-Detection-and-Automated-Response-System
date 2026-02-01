@@ -1,292 +1,260 @@
 import { useState } from 'react'
+import { 
+  Shield, 
+  AlertTriangle, 
+  Ban, 
+  Clock, 
+  TrendingUp,
+  Server,
+  Activity
+} from 'lucide-react'
 
 function Dashboard({ stats, alerts }) {
-  if (!stats) return <div className="text-slate-400">Loading...</div>
+  if (!stats) return null
+
+  const severityData = [
+    { label: 'Critical', count: stats.severity_counts?.CRITICAL || 0, color: 'bg-red-500', width: 'w-red' },
+    { label: 'High', count: stats.severity_counts?.HIGH || 0, color: 'bg-orange-500', width: 'w-orange' },
+    { label: 'Medium', count: stats.severity_counts?.MEDIUM || 0, color: 'bg-yellow-500', width: 'w-yellow' },
+    { label: 'Low', count: stats.severity_counts?.LOW || 0, color: 'bg-green-500', width: 'w-green' }
+  ]
+
+  const total = stats.total_alerts || 1
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6">
       {/* Top Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Events"
           value={stats.total_events?.toLocaleString() || 0}
-          subtitle="All traffic processed"
-          icon="📊"
+          subtitle="Events processed"
+          icon={Server}
           trend="+5%"
-          color="blue"
+          color="from-blue-500 to-blue-600"
         />
         <StatCard
           title="Threats Detected"
           value={stats.total_alerts}
-          subtitle={`${((stats.total_alerts / (stats.total_events || 1)) * 100).toFixed(1)}% of traffic`}
-          icon="🚨"
+          subtitle={`${((stats.total_alerts / (stats.total_events || 1)) * 100).toFixed(1)}% threat rate`}
+          icon={AlertTriangle}
           trend="+12%"
-          color="red"
+          color="from-red-500 to-red-600"
         />
         <StatCard
           title="Blocked IPs"
           value={stats.blocked_ips_count || 0}
-          subtitle="Currently blocked"
-          icon="🚫"
-          color="orange"
+          subtitle="Active blocks"
+          icon={Ban}
+          color="from-amber-500 to-amber-600"
         />
         <StatCard
-          title="Last 24h"
+          title="Last 24 Hours"
           value={stats.alerts_last_24h || 0}
           subtitle="Recent alerts"
-          icon="⏰"
-          color="green"
+          icon={Clock}
+          color="from-emerald-500 to-emerald-600"
         />
       </div>
 
-      {/* Severity Distribution & Top IPs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Severity Distribution */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-semibold mb-6 flex items-center">
-            <span className="mr-2">🎯</span> Severity Distribution
-          </h2>
+        <div className="lg:col-span-1 glass-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-white">Threat Severity</h3>
+            <span className="text-xs text-slate-400 bg-white/5 px-3 py-1 rounded-full">Live</span>
+          </div>
           
           <div className="space-y-4">
-            {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(severity => {
-              const count = stats.severity_counts[severity] || 0
-              const total = stats.total_alerts || 1
-              const percentage = ((count / total) * 100).toFixed(1)
-              
+            {severityData.map((item) => {
+              const percentage = ((item.count / total) * 100).toFixed(1)
               return (
-                <div key={severity} className="relative">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-slate-300">{severity}</span>
-                    <span className="text-slate-400">{count} ({percentage}%)</span>
+                <div key={item.label}>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-300 font-medium">{item.label}</span>
+                    <span className="text-slate-400">{item.count} ({percentage}%)</span>
                   </div>
-                  <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full rounded-full transition-all duration-1000 ${getSeverityColor(severity)}`}
+                      className={`h-full ${item.color} transition-all duration-500`}
                       style={{ width: `${percentage}%` }}
-                    />
+                    ></div>
                   </div>
                 </div>
               )
             })}
           </div>
+
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-400">Total Alerts</span>
+              <span className="text-white font-bold text-lg">{stats.total_alerts}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Top Offending IPs */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-semibold mb-6 flex items-center">
-            <span className="mr-2">🔥</span> Top Threat Sources
-          </h2>
-          
+        {/* Top Attackers */}
+        <div className="lg:col-span-2 glass-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-white">Top Threat Sources</h3>
+            <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">View All</button>
+          </div>
+
           {stats.top_offending_ips?.length > 0 ? (
             <div className="space-y-3">
               {stats.top_offending_ips.map((item, idx) => (
-                <div key={item.ip} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg font-bold text-slate-500 w-8">#{idx + 1}</span>
+                <div 
+                  key={item.ip} 
+                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-sm font-bold text-indigo-400">
+                      #{idx + 1}
+                    </div>
                     <div>
-                      <p className="font-mono font-semibold text-red-400">{item.ip}</p>
-                      <p className="text-xs text-slate-500">{item.count} alerts</p>
+                      <p className="font-mono text-white font-medium">{item.ip}</p>
+                      <p className="text-xs text-slate-400">{item.count} alerts detected</p>
                     </div>
                   </div>
-                  <div className="w-16 bg-slate-700 rounded-full h-2">
-                    <div 
-                      className="bg-red-500 h-2 rounded-full"
-                      style={{ width: `${Math.min(100, (item.count / (stats.top_offending_ips[0]?.count || 1)) * 100)}%` }}
-                    />
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-red-500 to-orange-500"
+                        style={{ width: `${Math.min(100, (item.count / (stats.top_offending_ips[0]?.count || 1)) * 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-bold text-white w-8 text-right">{item.count}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-center text-slate-500 py-8">No data available</p>
+            <div className="h-48 flex items-center justify-center text-slate-500">
+              No threat data available
+            </div>
           )}
         </div>
       </div>
 
-      {/* Attack Types & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Attack Types */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <span className="mr-2">⚔️</span> Attack Types
-          </h2>
-          <div className="space-y-3">
-            {Object.entries(stats.attack_types || {})
-              .sort((a, b) => b[1] - a[1])
-              .map(([type, count]) => (
-                <div key={type} className="flex items-center justify-between p-3 bg-slate-900/30 rounded-lg">
-                  <span className="text-sm text-slate-300">{type}</span>
-                  <span className="bg-slate-700 px-3 py-1 rounded-full text-sm font-bold text-white">
-                    {count}
-                  </span>
-                </div>
-              ))}
-            {Object.keys(stats.attack_types || {}).length === 0 && (
-              <p className="text-center py-8 text-slate-500">No attacks detected</p>
-            )}
+      {/* Model Performance */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Activity className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-lg font-semibold text-white">ML Model Performance</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-xs text-emerald-400 font-medium">NSL-KDD Trained</span>
           </div>
         </div>
 
-        {/* Recent Alerts */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 lg:col-span-2">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <span className="mr-2">⚡</span> Recent Activity
-          </h2>
-          
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {alerts.slice(0, 10).map((alert) => (
-              <div
-                key={alert.id}
-                className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700"
-              >
-                <div className="flex items-start space-x-3 flex-1">
-                  <SeverityDot severity={alert.severity} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <p className="font-medium text-sm truncate">{alert.threat_type}</p>
-                      <span className="text-xs text-slate-500">{alert.source_ip}</span>
-                    </div>
-                    <p className="text-xs text-slate-400 truncate">{alert.description}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-slate-500 whitespace-nowrap ml-4">
-                  {new Date(alert.timestamp).toLocaleTimeString()}
-                </span>
-              </div>
-            ))}
-            {alerts.length === 0 && (
-              <p className="text-center py-8 text-slate-500">Run the demo to generate activity!</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Model Performance - NEW SECTION */}
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold flex items-center">
-            <span className="mr-2">🧠</span> ML Model Performance
-          </h2>
-          <span className={`px-3 py-1 rounded-full text-sm border ${
-            stats.model_info?.type?.includes('NSL-KDD') 
-              ? 'bg-green-900/50 text-green-400 border-green-700' 
-              : 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
-          }`}>
-            {stats.model_info?.type || 'Demo Mode'}
-          </span>
-        </div>
-        
         {stats.model_info?.accuracy && stats.model_info.accuracy !== 'N/A (Demo Mode)' ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MetricCard label="Accuracy" value={stats.model_info.accuracy} icon="🎯" />
-            <MetricCard label="Precision" value={stats.model_info.precision} icon="🎯" />
-            <MetricCard label="Recall" value={stats.model_info.recall} icon="🔍" />
-            <MetricCard label="F1-Score" value={stats.model_info.f1} icon="⚖️" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <MetricBox label="Accuracy" value={stats.model_info.accuracy} icon={TrendingUp} />
+            <MetricBox label="Precision" value={stats.model_info.precision} icon={Shield} />
+            <MetricBox label="Recall" value={stats.model_info.recall} icon={Activity} />
+            <MetricBox label="F1-Score" value={stats.model_info.f1} icon={TrendingUp} />
           </div>
         ) : (
-          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 text-yellow-200 text-sm">
-            <p className="font-semibold mb-1">⚠️ Demo Mode Active</p>
-            <p>Run <code className="bg-yellow-900/50 px-2 py-1 rounded">python train_model.py</code> with NSL-KDD dataset for real metrics.</p>
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+            Training data not detected. Run train_model.py with NSL-KDD dataset to enable metrics.
           </div>
         )}
-        
-        <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-slate-400">
-          <div>
-            <span className="text-slate-500">Training Data:</span> {stats.model_info?.training_samples || 'N/A'} samples
+
+        <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-between text-sm text-slate-400">
+          <div className="flex items-center gap-6">
+            <span>Training Samples: <span className="text-slate-200 font-medium">{stats.model_info?.training_samples || 'N/A'}</span></span>
+            <span>Features: <span className="text-slate-200 font-medium">{stats.model_info?.features || '10 basic'}</span></span>
           </div>
-          <div>
-            <span className="text-slate-500">Features:</span> {stats.model_info?.features || '10 basic features'}
-          </div>
+          <span className="text-slate-500">Model: Isolation Forest + Rule Engine</span>
         </div>
       </div>
 
-      {/* System Status */}
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 className="text-xl font-semibold mb-4 flex items-center">
-          <span className="mr-2">⚙️</span> System Status
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatusCard title="Event Ingestion" status="active" detail="Processing" />
-          <StatusCard title="ML Detection" status="active" detail={stats.model_info?.type?.includes('NSL-KDD') ? 'NSL-KDD Model' : 'Isolation Forest'} />
-          <StatusCard title="Rule Engine" status="active" detail="5 Rules Active" />
-          <StatusCard title="IP Blocking" status={stats.blocked_ips_count > 0 ? "warning" : "active"} 
-                     detail={stats.blocked_ips_count > 0 ? `${stats.blocked_ips_count} Blocked` : "Active"} />
+      {/* Recent Activity */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
+          <span className="text-xs text-slate-400">Last 10 alerts</span>
+        </div>
+
+        <div className="space-y-2">
+          {alerts.slice(0, 10).map((alert) => (
+            <div
+              key={alert.id}
+              className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <SeverityIndicator severity={alert.severity} />
+                <div>
+                  <p className="text-white font-medium text-sm">{alert.threat_type}</p>
+                  <p className="text-xs text-slate-400">{alert.source_ip} • {alert.protocol}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-400">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                <p className="text-xs text-slate-500">Score: {(alert.ml_score * 100).toFixed(0)}%</p>
+              </div>
+            </div>
+          ))}
+          {alerts.length === 0 && (
+            <div className="h-32 flex items-center justify-center text-slate-500 text-sm">
+              No recent activity. Run demo to generate events.
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-// Helper Components
-function StatCard({ title, value, subtitle, icon, trend, color }) {
+function StatCard({ title, value, subtitle, icon: Icon, trend, color }) {
   return (
-    <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 hover:border-slate-600 transition-all hover:transform hover:-translate-y-1">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-slate-400 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold text-white mt-2">{value}</p>
-          <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+    <div className="glass-card p-6 hover:border-indigo-500/30 transition-all group">
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg`}>
+          <Icon className="w-6 h-6 text-white" />
         </div>
-        <span className="text-3xl">{icon}</span>
-      </div>
-      {trend && (
-        <div className="mt-4 flex items-center text-xs">
-          <span className={`${trend.startsWith('+') ? 'text-green-400' : 'text-red-400'} font-semibold`}>
+        {trend && (
+          <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
             {trend}
           </span>
-          <span className="text-slate-500 ml-1">vs last period</span>
-        </div>
-      )}
+        )}
+      </div>
+      
+      <div>
+        <p className="text-2xl font-bold text-white mb-1">{value}</p>
+        <p className="text-sm text-slate-400 mb-1">{title}</p>
+        <p className="text-xs text-slate-500">{subtitle}</p>
+      </div>
     </div>
   )
 }
 
-function MetricCard({ label, value, icon }) {
+function MetricBox({ label, value, icon: Icon }) {
   return (
-    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 text-center">
-      <div className="text-2xl mb-1">{icon}</div>
-      <div className="text-2xl font-bold text-white">{value || '0%'}</div>
-      <div className="text-xs text-slate-400">{label}</div>
+    <div className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
+      <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+        <Icon className="w-5 h-5 text-indigo-400" />
+      </div>
+      <p className="text-2xl font-bold text-white mb-1">{value || '0%'}</p>
+      <p className="text-xs text-slate-400 uppercase tracking-wider">{label}</p>
     </div>
   )
 }
 
-function StatusCard({ title, status, detail }) {
-  const statusColors = {
-    active: 'bg-green-500',
-    warning: 'bg-yellow-500',
-    error: 'bg-red-500'
+function SeverityIndicator({ severity }) {
+  const colors = {
+    CRITICAL: 'bg-red-500 shadow-red-500/50',
+    HIGH: 'bg-orange-500 shadow-orange-500/50',
+    MEDIUM: 'bg-yellow-500 shadow-yellow-500/50',
+    LOW: 'bg-green-500 shadow-green-500/50'
   }
   
   return (
-    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-semibold text-sm text-slate-300">{title}</h3>
-        <div className={`w-2 h-2 rounded-full ${statusColors[status]} animate-pulse`} />
-      </div>
-      <p className="text-xs text-slate-500">{detail}</p>
-    </div>
+    <div className={`w-2 h-8 rounded-full ${colors[severity] || 'bg-slate-500'} shadow-lg`}></div>
   )
-}
-
-function SeverityDot({ severity }) {
-  const colors = {
-    CRITICAL: 'bg-red-500',
-    HIGH: 'bg-orange-500',
-    MEDIUM: 'bg-yellow-500',
-    LOW: 'bg-green-500'
-  }
-  return <div className={`w-2 h-2 rounded-full ${colors[severity] || 'bg-slate-500'} mt-2`} />
-}
-
-function getSeverityColor(severity) {
-  const colors = {
-    CRITICAL: 'bg-gradient-to-r from-red-600 to-red-400',
-    HIGH: 'bg-gradient-to-r from-orange-600 to-orange-400',
-    MEDIUM: 'bg-gradient-to-r from-yellow-600 to-yellow-400',
-    LOW: 'bg-gradient-to-r from-green-600 to-green-400'
-  }
-  return colors[severity] || 'bg-slate-600'
 }
 
 export default Dashboard

@@ -1,4 +1,11 @@
 import { useState, useEffect } from 'react'
+import { 
+  Ban, 
+  Shield, 
+  AlertTriangle,
+  Unlock,
+  RefreshCw
+} from 'lucide-react'
 import { api } from './api'
 
 function BlockedIPs({ onRefresh }) {
@@ -21,7 +28,7 @@ function BlockedIPs({ onRefresh }) {
   }
 
   const handleUnblock = async (ip) => {
-    if (!window.confirm(`Unblock ${ip}?`)) return
+    if (!window.confirm(`Unblock IP address ${ip}?`)) return
     try {
       await api.unblockIP(ip)
       fetchBlocked()
@@ -31,64 +38,109 @@ function BlockedIPs({ onRefresh }) {
     }
   }
 
-  if (loading) return <div className="text-center py-8 text-slate-400">Loading...</div>
+  if (loading) return (
+    <div className="h-64 flex items-center justify-center text-slate-500">
+      <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mr-3"></div>
+      Loading blocked IPs...
+    </div>
+  )
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <div className="flex items-center justify-between mb-6">
+      {/* Stats Header */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="glass-card p-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+            <Ban className="w-6 h-6 text-red-400" />
+          </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">🚫 Blocked IPs</h2>
-            <p className="text-slate-400 text-sm mt-1">
-              {blocked.length} IP(s) currently blocked
+            <p className="text-2xl font-bold text-white">{blocked.length}</p>
+            <p className="text-sm text-slate-400">Active Blocks</p>
+          </div>
+        </div>
+        
+        <div className="glass-card p-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-amber-400" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-white">
+              {blocked.reduce((sum, item) => sum + item.alert_count, 0)}
             </p>
+            <p className="text-sm text-slate-400">Total Blocked Events</p>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+            <Shield className="w-6 h-6 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-emerald-400">Active</p>
+            <p className="text-sm text-slate-400">Protection Status</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Table */}
+      <div className="glass-card overflow-hidden">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Blocked IP Addresses</h3>
+            <p className="text-sm text-slate-400 mt-1">All traffic from these sources is currently rejected</p>
           </div>
           <button 
             onClick={fetchBlocked}
-            className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-slate-300 transition-colors"
           >
-            🔄 Refresh
+            <RefreshCw className="w-4 h-4" />
+            Refresh
           </button>
         </div>
 
         {blocked.length === 0 ? (
-          <div className="text-center py-12 bg-slate-900/50 rounded-lg">
-            <div className="text-6xl mb-4">✅</div>
-            <p className="text-slate-400">No IPs currently blocked</p>
-            <p className="text-sm text-slate-500 mt-2">Block IPs from the alerts view</p>
+          <div className="h-64 flex flex-col items-center justify-center text-slate-500">
+            <Shield className="w-12 h-12 mb-3 text-emerald-500/50" />
+            <p className="text-sm font-medium">No IPs currently blocked</p>
+            <p className="text-xs mt-1">Blocked IPs will appear here</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-900/50">
+              <thead className="bg-white/5">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">IP Address</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Blocked At</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Reason</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Alerts</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Action</th>
+                  <th className="text-left py-4 px-6 text-xs font-medium text-slate-400 uppercase tracking-wider">IP Address</th>
+                  <th className="text-left py-4 px-6 text-xs font-medium text-slate-400 uppercase tracking-wider">Blocked At</th>
+                  <th className="text-left py-4 px-6 text-xs font-medium text-slate-400 uppercase tracking-wider">Reason</th>
+                  <th className="text-left py-4 px-6 text-xs font-medium text-slate-400 uppercase tracking-wider">Alert Count</th>
+                  <th className="text-right py-4 px-6 text-xs font-medium text-slate-400 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-white/5">
                 {blocked.map((item) => (
-                  <tr key={item.ip} className="hover:bg-slate-700/50">
-                    <td className="px-6 py-4 font-mono text-red-400 font-semibold">{item.ip}</td>
-                    <td className="px-6 py-4 text-sm text-slate-300">
+                  <tr key={item.ip} className="hover:bg-white/5 transition-colors">
+                    <td className="py-4 px-6">
+                      <code className="text-red-400 font-mono font-medium text-sm bg-red-500/10 px-3 py-1 rounded-lg border border-red-500/20">
+                        {item.ip}
+                      </code>
+                    </td>
+                    <td className="py-4 px-6 text-sm text-slate-400">
                       {item.blocked_at ? new Date(item.blocked_at).toLocaleString() : 'Unknown'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-400 max-w-xs truncate">
+                    <td className="py-4 px-6 text-sm text-slate-400 max-w-xs truncate">
                       {item.reason}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-red-900/50 text-red-200 px-2 py-1 rounded-full text-xs">
+                    <td className="py-4 px-6">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
                         {item.alert_count} alerts
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="py-4 px-6 text-right">
                       <button
                         onClick={() => handleUnblock(item.ip)}
-                        className="text-green-400 hover:text-green-300 font-medium text-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors text-sm font-medium"
                       >
+                        <Unlock className="w-4 h-4" />
                         Unblock
                       </button>
                     </td>
@@ -99,27 +151,6 @@ function BlockedIPs({ onRefresh }) {
           </div>
         )}
       </div>
-
-      {/* Quick Stats */}
-      {blocked.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <p className="text-slate-400 text-sm">Total Blocked</p>
-            <p className="text-3xl font-bold text-white mt-1">{blocked.length}</p>
-          </div>
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <p className="text-slate-400 text-sm">Total Alerts</p>
-            <p className="text-3xl font-bold text-red-400 mt-1">
-              {blocked.reduce((sum, item) => sum + item.alert_count, 0)}
-            </p>
-          </div>
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <p className="text-slate-400 text-sm">Auto-Protection</p>
-            <p className="text-lg font-bold text-green-400 mt-1">Active</p>
-            <p className="text-xs text-slate-500">Blocking new events</p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
