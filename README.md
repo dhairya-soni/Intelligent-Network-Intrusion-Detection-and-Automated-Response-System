@@ -15,35 +15,35 @@
 
 ---
 
-## 🎥 Demo Overview
+##  Demo Overview
 
 INIDARS (Intelligent Network Intrusion Detection and Automated Response System) combines **supervised machine learning** with **expert rules** to detect network threats in real-time. The system processes network events, extracts features, and classifies traffic as normal or malicious with automated response capabilities.
 
 ### Key Capabilities
-- 🧠 **ML-Powered Detection**: Isolation Forest + Random Forest trained on 125,973 NSL-KDD samples
-- 🔍 **Rule-Based Engine**: 5 attack pattern detectors (Brute Force, Port Scan, SQL Injection, DDoS, Malware)
-- ⚡ **Real-Time Processing**: <100ms detection latency
-- 🚫 **Automated Response**: IP blocking with investigation tools
-- 📊 **Live Dashboard**: React-based monitoring with severity analytics
+-  **ML-Powered Detection**: Isolation Forest + Random Forest trained on 125,973 NSL-KDD samples
+-  **Rule-Based Engine**: 5 attack pattern detectors (Brute Force, Port Scan, SQL Injection, DDoS, Malware)
+-  **Real-Time Processing**: <100ms detection latency
+-  **Automated Response**: IP blocking with investigation tools
+-  **Live Dashboard**: React-based monitoring with severity analytics
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🔐 Detection Engine
+###  Detection Engine
 - **Hybrid Architecture**: Combines ML anomaly detection with signature-based rules
 - **ML Model**: Trained on NSL-KDD dataset with 41 network features
 - **Attack Patterns**: Brute Force, Port Scan, SQL Injection, DDoS, Malware detection
 - **Confidence Scoring**: ML anomaly scores (0-1) with rule-based validation
 - **Severity Classification**: CRITICAL, HIGH, MEDIUM, LOW with automated triage
 
-### 🛡️ Response & Investigation
+###  Response & Investigation
 - **IP Blocking**: One-click blocking with persistent storage
 - **IP Investigation**: Complete timeline view of suspicious IPs
 - **Action Logging**: Audit trail of all security responses
 - **Alert Management**: Individual alert deletion and bulk clearing
 
-### 📈 Monitoring & Analytics
+###  Monitoring & Analytics
 - **Real-Time Dashboard**: Live event streaming with auto-refresh
 - **Threat Visualization**: Severity distribution, attack type breakdown
 - **Top Offenders**: Ranking of most active malicious IPs
@@ -52,7 +52,7 @@ INIDARS (Intelligent Network Intrusion Detection and Automated Response System) 
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐
@@ -108,7 +108,7 @@ INIDARS (Intelligent Network Intrusion Detection and Automated Response System) 
 
 ---
 
-## 🧠 Model Performance
+##  Model Performance
 
 Trained and evaluated on the **NSL-KDD** dataset, the standard benchmark for intrusion detection systems.
 
@@ -127,7 +127,7 @@ Trained and evaluated on the **NSL-KDD** dataset, the standard benchmark for int
 
 ---
 
-## 🚀 Installation
+##  Installation
 
 ### Prerequisites
 - Python 3.8+
