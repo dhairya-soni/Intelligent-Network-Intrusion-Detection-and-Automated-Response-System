@@ -1,4 +1,4 @@
-# 🛡️ INIDARS - Intelligent Network Intrusion Detection & Automated Response System
+#  INIDARS - Intelligent Network Intrusion Detection & Automated Response System
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.0%2B-61DAFB?logo=react)](https://reactjs.org/)
