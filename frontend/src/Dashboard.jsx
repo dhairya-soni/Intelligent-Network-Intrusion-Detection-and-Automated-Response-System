@@ -1,28 +1,54 @@
 import { useState } from 'react'
-import { 
-  Shield, 
-  AlertTriangle, 
-  Ban, 
-  Clock, 
+import {
+  Shield,
+  AlertTriangle,
+  Ban,
+  Clock,
   TrendingUp,
   Server,
-  Activity
+  Activity,
+  FileText,
+  Download
 } from 'lucide-react'
 
 function Dashboard({ stats, alerts }) {
   if (!stats) return null
 
   const severityData = [
-    { label: 'Critical', count: stats.severity_counts?.CRITICAL || 0, color: 'bg-red-500', width: 'w-red' },
-    { label: 'High', count: stats.severity_counts?.HIGH || 0, color: 'bg-orange-500', width: 'w-orange' },
-    { label: 'Medium', count: stats.severity_counts?.MEDIUM || 0, color: 'bg-yellow-500', width: 'w-yellow' },
-    { label: 'Low', count: stats.severity_counts?.LOW || 0, color: 'bg-green-500', width: 'w-green' }
+    { label: 'Critical', count: stats.severity_counts?.CRITICAL || 0, color: 'bg-red-500' },
+    { label: 'High',     count: stats.severity_counts?.HIGH     || 0, color: 'bg-orange-500' },
+    { label: 'Medium',   count: stats.severity_counts?.MEDIUM   || 0, color: 'bg-yellow-500' },
+    { label: 'Low',      count: stats.severity_counts?.LOW      || 0, color: 'bg-green-500' },
   ]
 
   const total = stats.total_alerts || 1
 
   return (
     <div className="space-y-6">
+      {/* Dashboard header with export button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-white">Security Overview</h2>
+          <p className="text-sm text-slate-400 mt-0.5">Real-time threat monitoring dashboard</p>
+        </div>
+        <div className="flex gap-2">
+          <a
+            href="/api/export/csv"
+            download
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 text-sm font-medium transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </a>
+          <a
+            href="/api/export/pdf"
+            download
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/30 text-sm font-medium transition-colors"
+          >
+            <FileText className="w-4 h-4" /> Download Report
+          </a>
+        </div>
+      </div>
+
       {/* Top Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard

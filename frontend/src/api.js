@@ -71,5 +71,20 @@ export const api = {
   // NEW: Model Info
   getModelInfo: async () => {
     return axios.get(`${API_BASE}/model/info`)
-  }
+  },
+
+  // Benchmarks: our model vs published papers
+  getBenchmarks: async () => {
+    return axios.get(`${API_BASE}/benchmarks`)
+  },
+
+  // Threat intelligence: AbuseIPDB lookup
+  getThreatIntel: async (ip) => {
+    return axios.get(`${API_BASE}/threat-intel/${ip}`)
+  },
+
+  // Threat intel config status
+  getThreatIntelStatus: async () => {
+    return axios.get(`${API_BASE}/threat-intel/status`)
+  },
 }

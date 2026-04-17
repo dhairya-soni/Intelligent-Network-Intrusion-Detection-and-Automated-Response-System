@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
-import { 
-  LayoutDashboard, 
-  ShieldAlert, 
-  Ban, 
-  Activity, 
-  RefreshCw, 
+import {
+  LayoutDashboard,
+  ShieldAlert,
+  Ban,
+  Activity,
+  RefreshCw,
   Shield,
   Menu,
-  Bell
+  Bell,
+  Trophy
 } from 'lucide-react'
 import Dashboard from './Dashboard'
 import AlertsList from './AlertsList'
 import BlockedIPs from './BlockedIPs'
+import Benchmarks from './Benchmarks'
 import { api } from './api'
 
 function App() {
@@ -63,11 +65,17 @@ function App() {
       icon: ShieldAlert,
       count: stats?.total_alerts 
     },
-    { 
-      id: 'blocked', 
-      label: 'Blocked IPs', 
+    {
+      id: 'blocked',
+      label: 'Blocked IPs',
       icon: Ban,
-      count: stats?.blocked_ips_count 
+      count: stats?.blocked_ips_count
+    },
+    {
+      id: 'benchmarks',
+      label: 'Benchmarks',
+      icon: Trophy,
+      count: null
     }
   ]
 
@@ -191,9 +199,10 @@ function App() {
             </div>
           ) : (
             <div className="fade-in">
-              {view === 'dashboard' && <Dashboard stats={stats} alerts={alerts} />}
-              {view === 'alerts' && <AlertsList alerts={alerts} onRefresh={fetchData} />}
-              {view === 'blocked' && <BlockedIPs onRefresh={fetchData} />}
+              {view === 'dashboard'   && <Dashboard stats={stats} alerts={alerts} />}
+              {view === 'alerts'     && <AlertsList alerts={alerts} onRefresh={fetchData} />}
+              {view === 'blocked'    && <BlockedIPs onRefresh={fetchData} />}
+              {view === 'benchmarks' && <Benchmarks />}
             </div>
           )}
         </div>

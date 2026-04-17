@@ -20,3 +20,6 @@ Thumbs.db
 
 # ML models (optional if large)
 *.pkl
+
+# Claude Code internal directory
+.claude/
