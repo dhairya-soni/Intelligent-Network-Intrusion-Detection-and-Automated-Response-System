@@ -174,10 +174,14 @@ function App() {
             
             <div className="h-6 w-px bg-white/10"></div>
             
-            <button className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white relative">
+            <button
+              onClick={() => setView('alerts')}
+              className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white relative"
+              title={`${stats?.total_alerts || 0} total alerts`}
+            >
               <Bell className="w-5 h-5" />
               {stats?.total_alerts > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
               )}
             </button>
           </div>
@@ -199,7 +203,7 @@ function App() {
             </div>
           ) : (
             <div className="fade-in">
-              {view === 'dashboard'   && <Dashboard stats={stats} alerts={alerts} />}
+              {view === 'dashboard'   && <Dashboard stats={stats} alerts={alerts} onViewAlerts={() => setView('alerts')} />}
               {view === 'alerts'     && <AlertsList alerts={alerts} onRefresh={fetchData} />}
               {view === 'blocked'    && <BlockedIPs onRefresh={fetchData} />}
               {view === 'benchmarks' && <Benchmarks />}

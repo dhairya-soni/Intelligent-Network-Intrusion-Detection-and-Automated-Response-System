@@ -41,8 +41,15 @@ def ingest_event():
             return jsonify({'status': 'blocked',
                             'message': f'IP {source_ip} is blocked'}), 403
 
-        normalized   = _normalize(event)
-        features     = feature_extractor.extract(normalized)
+        normalized = _normalize(event)
+        # If demo sends pre-computed NSL-KDD features, use them directly so the
+        # ensemble model (trained on 41 NSL-KDD features) gets proper input.
+        # Without this, feature_extractor produces only 10 basic features which
+        # get zero-padded to 41, making ML predictions garbage.
+        if '_nslkdd_features' in event:
+            features = event['_nslkdd_features']
+        else:
+            features = feature_extractor.extract(normalized)
         result       = detector.detect(features, normalized)
 
         if result['is_threat']:
@@ -544,11 +551,25 @@ def _make_alert(event: dict, result: dict) -> dict:
 
 
 def _severity(result: dict) -> str:
-    score = result['ml_score']
-    rule  = result['rule_matched']
-    if score > 0.8 and rule:          return SEVERITY_CRITICAL
-    if (score > 0.65 and rule) or score > 0.85: return SEVERITY_HIGH
-    if (score > 0.5  and rule) or score > 0.65: return SEVERITY_MEDIUM
+    score    = result['ml_score']
+    rule     = result['rule_matched']
+    category = result.get('attack_category', '')
+
+    # U2R (privilege escalation) is always CRITICAL — highest risk
+    if category == 'U2R':
+        return SEVERITY_CRITICAL
+    # R2L + detected confidently, or very high ML + rule confirms → CRITICAL
+    if (category == 'R2L' and score > 0.6) or (score > 0.8 and rule):
+        return SEVERITY_CRITICAL
+    # DoS / high-confidence ML → HIGH
+    if category == 'DoS' or score > 0.7:
+        return SEVERITY_HIGH
+    # Rule triggered or solid ML confidence → HIGH
+    if rule or score > 0.5:
+        return SEVERITY_HIGH
+    # Probe / moderate ML → MEDIUM
+    if category == 'Probe' or score > 0.35:
+        return SEVERITY_MEDIUM
     return SEVERITY_LOW
 
 

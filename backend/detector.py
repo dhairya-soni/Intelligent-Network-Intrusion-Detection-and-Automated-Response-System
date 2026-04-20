@@ -121,7 +121,7 @@ class INIDARSDetector:
         ml_score, attack_category = self._ml_detect(features)
         rule_result = self._rule_detect(event)
 
-        is_threat = ml_score > 0.45 or rule_result['matched']
+        is_threat = ml_score > 0.35 or rule_result['matched']
         if not is_threat:
             return {
                 'is_threat': False, 'threat_type': None,
@@ -346,7 +346,7 @@ class PortScanRule(DetectionRule):
         ip = event.get('source_ip', '')
         port = event.get('dest_port', 0)
         self.ports.setdefault(ip, set()).add(port)
-        return len(self.ports[ip]) > 10
+        return len(self.ports[ip]) > 5
 
 
 class SQLInjectionRule(DetectionRule):
@@ -372,7 +372,7 @@ class DDoSRule(DetectionRule):
     def matches(self, event):
         ip = event.get('source_ip', '')
         self.counts[ip] = self.counts.get(ip, 0) + 1
-        return self.counts[ip] > 50
+        return self.counts[ip] > 15
 
 
 class MalwareRule(DetectionRule):

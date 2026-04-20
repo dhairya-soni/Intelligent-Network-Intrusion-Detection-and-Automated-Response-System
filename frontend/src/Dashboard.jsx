@@ -11,7 +11,7 @@ import {
   Download
 } from 'lucide-react'
 
-function Dashboard({ stats, alerts }) {
+function Dashboard({ stats, alerts, onViewAlerts }) {
   if (!stats) return null
 
   const severityData = [
@@ -123,7 +123,12 @@ function Dashboard({ stats, alerts }) {
         <div className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-white">Top Threat Sources</h3>
-            <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">View All</button>
+            <button
+              onClick={onViewAlerts}
+              className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+            >
+              View All →
+            </button>
           </div>
 
           {stats.top_offending_ips?.length > 0 ? (

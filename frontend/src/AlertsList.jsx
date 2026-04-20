@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Search, Filter, ShieldAlert, Trash2, Ban,
   Search as SearchIcon, X, ChevronDown, ChevronUp,
-  Zap, Globe, AlertTriangle, Download, FileText
+  Zap, Globe, AlertTriangle, Download, FileText, Eraser
 } from 'lucide-react'
 import { api } from './api'
 import IPHistoryModal from './IPHistoryModal'
@@ -211,6 +211,17 @@ function AlertsList({ alerts, onRefresh }) {
   const [filterSeverity, setFilterSeverity]   = useState('all')
   const [searchQuery, setSearchQuery]         = useState('')
   const [blockLoading, setBlockLoading]       = useState(null)
+  const [clearing, setClearing]               = useState(false)
+
+  const handleClearAll = async () => {
+    if (!window.confirm(`Clear all ${alerts.length} alerts permanently? This cannot be undone.`)) return
+    setClearing(true)
+    try {
+      await api.clearAlerts()
+      onRefresh()
+    } catch { alert('Failed to clear alerts') }
+    finally { setClearing(false) }
+  }
 
   const filteredAlerts = alerts.filter(alert => {
     const matchesSeverity = filterSeverity === 'all' || alert.severity === filterSeverity
@@ -289,7 +300,7 @@ function AlertsList({ alerts, onRefresh }) {
               href={`/api/export/csv${filterSeverity !== 'all' ? `?severity=${filterSeverity}` : ''}`}
               download
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-medium transition-colors"
-              title="Download CSV"
+              title="Download alerts as CSV"
             >
               <Download className="w-3.5 h-3.5" /> CSV
             </a>
@@ -297,10 +308,21 @@ function AlertsList({ alerts, onRefresh }) {
               href="/api/export/pdf"
               download
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/30 text-xs font-medium transition-colors"
-              title="Download PDF Report"
+              title="Download PDF security report"
             >
-              <FileText className="w-3.5 h-3.5" /> PDF Report
+              <FileText className="w-3.5 h-3.5" /> PDF
             </a>
+            {alerts.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                disabled={clearing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 text-xs font-medium transition-colors disabled:opacity-50"
+                title="Clear all alerts"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                {clearing ? 'Clearing…' : 'Clear All'}
+              </button>
+            )}
           </div>
         </div>
       </div>
